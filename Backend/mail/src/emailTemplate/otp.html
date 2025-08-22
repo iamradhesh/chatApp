@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Email</title>
+    <style>
+      /* Reset */
+      body, table, td, a {
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+      }
+      table {
+        border-collapse: collapse !important;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100% !important;
+        font-family: Arial, sans-serif;
+        background-color: #f9fafb;
+      }
+
+      /* Container */
+      .email-wrapper {
+        width: 100%;
+        background-color: #f9fafb;
+        padding: 20px;
+      }
+      .email-content {
+        max-width: 600px;
+        margin: auto;
+        background: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      }
+
+      /* Header */
+      .email-header {
+        background: #4f46e5;
+        color: #ffffff;
+        padding: 20px;
+        text-align: center;
+        font-size: 20px;
+      }
+
+      /* Body */
+      .email-body {
+        padding: 20px;
+        font-size: 16px;
+        color: #111827;
+        line-height: 1.6;
+      }
+
+      /* Button */
+      .btn {
+        display: inline-block;
+        background: #4f46e5;
+        color: #ffffff !important;
+        padding: 12px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+      }
+
+      /* Footer */
+      .email-footer {
+        text-align: center;
+        padding: 15px;
+        font-size: 12px;
+        color: #6b7280;
+      }
+
+      /* Mobile responsiveness */
+      @media only screen and (max-width: 600px) {
+        .email-content {
+          width: 100% !important;
+          border-radius: 0 !important;
+        }
+        .email-body {
+          font-size: 14px !important;
+        }
+        .btn {
+          padding: 10px 20px !important;
+          font-size: 14px !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-wrapper">
+      <div class="email-content">
+        <div class="email-header">🚀 Welcome to Our App!</div>
+        <div class="email-body">
+          <p>Hi <strong>{{username}}</strong>,</p>
+          <p>
+            Thanks for signing up! We're excited to have you on board.
+          </p>
+          <p>
+            Click the button below to verify your account:
+          </p>
+          <p style="text-align: center;">
+            <a href="{{verifyUrl}}" class="btn">Verify Account</a>
+          </p>
+          <p>
+            If you didn’t request this, you can safely ignore this email.
+          </p>
+        </div>
+        <div class="email-footer">
+          © 2025 Your Company. All rights reserved.
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
