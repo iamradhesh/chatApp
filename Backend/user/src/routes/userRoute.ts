@@ -1,9 +1,14 @@
 import express from "express";
+import { getAllUsers, getUser, loginUser, myProfile, updateProfile, verifyOtp } from "../controllers/userController.js";
+import { isAuth } from "../middleware/isAuth.js";
 
 const router = express.Router();
 
-router.get("/users", (req, res) => {
-  res.send("List of users");
-});
+router.post("/login",loginUser);
+router.post("/verify-otp",verifyOtp);
+router.get("/me",isAuth,myProfile);
+router.get("/user/all",isAuth,getAllUsers);
+router.get("/user/:id",isAuth,getUser);
+router.post("/update/user",isAuth,updateProfile);
 
 export default router;
