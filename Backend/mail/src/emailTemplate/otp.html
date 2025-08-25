@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Email</title>
+    <title>Your OTP Code</title>
     <style>
       /* Reset */
       body, table, td, a {
@@ -51,17 +51,21 @@
         font-size: 16px;
         color: #111827;
         line-height: 1.6;
+        text-align: center;
       }
 
-      /* Button */
-      .btn {
+      /* OTP Box */
+      .otp-box {
         display: inline-block;
-        background: #4f46e5;
-        color: #ffffff !important;
-        padding: 12px 24px;
-        border-radius: 8px;
-        text-decoration: none;
+        margin: 20px auto;
+        padding: 15px 30px;
+        font-size: 28px;
         font-weight: bold;
+        letter-spacing: 5px;
+        color: #111827;
+        background: #f3f4f6;
+        border: 2px dashed #4f46e5;
+        border-radius: 8px;
       }
 
       /* Footer */
@@ -81,9 +85,10 @@
         .email-body {
           font-size: 14px !important;
         }
-        .btn {
-          padding: 10px 20px !important;
-          font-size: 14px !important;
+        .otp-box {
+          font-size: 22px !important;
+          padding: 12px 20px !important;
+          letter-spacing: 3px !important;
         }
       }
     </style>
@@ -91,21 +96,14 @@
   <body>
     <div class="email-wrapper">
       <div class="email-content">
-        <div class="email-header">🚀 Welcome to Our App!</div>
+        <div class="email-header">🔑 Your One-Time Password</div>
         <div class="email-body">
-          <p>Hi <strong>{{username}}</strong>,</p>
-          <p>
-            Thanks for signing up! We're excited to have you on board.
-          </p>
-          <p>
-            Click the button below to verify your account:
-          </p>
-          <p style="text-align: center;">
-            <a href="{{verifyUrl}}" class="btn">Verify Account</a>
-          </p>
-          <p>
-            If you didn’t request this, you can safely ignore this email.
-          </p>
+          <p>Hello,</p>
+          <p>Use the OTP below to complete your login. This code is valid for <strong>5 minutes</strong>.</p>
+          
+          <div class="otp-box">{{OTP}}</div>
+          
+          <p>If you didn’t request this code, you can safely ignore this email.</p>
         </div>
         <div class="email-footer">
           © 2025 Your Company. All rights reserved.
