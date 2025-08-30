@@ -39,16 +39,25 @@ export const createNewChat = TryCatch(async(req:AuthenticatedRequest,res)=>{
 })
 
 //Fetch all chats for a user
-export const fetchChats = TryCatch(async (req: AuthenticatedRequest, res) => {
+export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
     const userId = req.user?.id;
 
     if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
+        return res.status(401).json({ message: "User not authenticated , User ID is missing" });
     }
 
     const chats = await Chat.find({
-        users: { $in: [userId] }
-    });
+        users: userId
+    }).sort({ updatedAt: -1 });
 
-    res.status(200).json({ chats });
+
+    // res.status(200).json({ chats });
+
+    const chatWithUserData = await Promise.all(
+        chats.map(async(chat)=>{
+            const otherUserId = chat.users.find(id=>id!==userId);
+
+            // const unseenCount
+        })
+    );
 });
