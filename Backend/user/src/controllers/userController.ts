@@ -108,16 +108,18 @@ export const updateProfile = TryCatch(
       return res.status(404).json({ message: "User not found" });
     }
 
-    const { name, email } = req.body;
+    const { name, email } = req.body as { name?: string; email?: string };
     user.name = name || user.name;
     user.email = email || user.email;
 
     await user.save();
 
+    const newToken = generateToken(user._id.toString());
     return res.status(200).json({
       success: true,
       message: "Profile updated successfully",
       user,
+      token: newToken,
     });
   }
 );

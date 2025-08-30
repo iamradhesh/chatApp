@@ -4,10 +4,12 @@ import { connectDB } from "./config/db.js";
 import redisClient from "./config/redisClient.js";
 import userRoutes from "./routes/userRoute.js";
 import { connectRabbitMQ } from "./config/rabbitmq.js";
-
+import cors from "cors";
 dotenv.config();
 
 const app = express();
+
+app.use(cors());
 app.use(express.json());
 // DB connection
 

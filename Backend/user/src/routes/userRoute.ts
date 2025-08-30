@@ -8,7 +8,7 @@ router.post("/login",loginUser);
 router.post("/verify-otp",verifyOtp);
 router.get("/me",isAuth,myProfile);
 router.get("/user/all",isAuth,getAllUsers);
-router.get("/user/:id",isAuth,getUser);
+router.get("/user/:id",getUser);
 router.post("/update/user",isAuth,updateProfile);
 
 export default router;
