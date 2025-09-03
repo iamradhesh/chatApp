@@ -67,13 +67,13 @@ interface LoginPageProps {
  * ```tsx
  * // Basic usage
  * <LoginPage />
- * 
+ *
  * // With custom styling and callback
- * <LoginPage 
+ * <LoginPage
  *   className="custom-login-page"
  *   onLoginSuccess={(email) => console.log('Login successful for:', email)}
  * />
- * 
+ *
  * // With custom API endpoint
  * <LoginPage apiEndpoint="https://api.example.com/auth/login" />
  * ```
@@ -126,52 +126,53 @@ interface LoginPageProps {
  * - Optimized for screens from 320px to 1920px+
  * - Flexible layouts that adapt to viewport
  */
-const LoginPage: React.FC<LoginPageProps> = ({ 
+const LoginPage: React.FC<LoginPageProps> = ({
   className = "",
   onLoginSuccess,
-  apiEndpoint = API_ENDPOINTS.LOGIN
+  apiEndpoint = API_ENDPOINTS.LOGIN,
 }) => {
   // ========================================
   // State Management
   // ========================================
-  
+
   /** User's email input value */
   const [email, setEmail] = useState<string>("");
-  
+
   /** Loading state during OTP send operation */
   const [loading, setLoading] = useState<boolean>(false);
-  
+
   /** Current error message to display to user */
   const [error, setError] = useState<string>("");
-  
+
   /** Email format validation state */
   const [isEmailValid, setIsEmailValid] = useState<boolean>(false);
-  
+
   /** Whether the user has started typing (for validation display) */
   const [hasStartedTyping, setHasStartedTyping] = useState<boolean>(false);
 
   // ========================================
   // Hooks
   // ========================================
-  
+
   /** Next.js router instance for navigation */
   const router = useRouter();
 
   // ========================================
   // Effects
   // ========================================
-  
+
   /**
    * Effect to validate email format in real-time
    * Updates validation state when email changes
    */
   useEffect(() => {
     if (email.length > 0) {
-      const isValid = CONFIG.EMAIL_REGEX.test(email) && 
-                     email.length >= CONFIG.MIN_EMAIL_LENGTH && 
-                     email.length <= CONFIG.MAX_EMAIL_LENGTH;
+      const isValid =
+        CONFIG.EMAIL_REGEX.test(email) &&
+        email.length >= CONFIG.MIN_EMAIL_LENGTH &&
+        email.length <= CONFIG.MAX_EMAIL_LENGTH;
       setIsEmailValid(isValid);
-      
+
       // Clear error when user starts typing valid email
       if (isValid && error) {
         setError("");
@@ -184,7 +185,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
   // ========================================
   // Event Handlers
   // ========================================
-  
+
   /**
    * Handles email input changes with validation
    * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event
@@ -192,12 +193,12 @@ const LoginPage: React.FC<LoginPageProps> = ({
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const newEmail = e.target.value.trim().toLowerCase();
     setEmail(newEmail);
-    
+
     // Mark that user has started typing for validation display
     if (!hasStartedTyping && newEmail.length > 0) {
       setHasStartedTyping(true);
     }
-    
+
     // Clear error when user starts typing
     if (error) {
       setError("");
@@ -213,22 +214,22 @@ const LoginPage: React.FC<LoginPageProps> = ({
       setError("Email address is required");
       return false;
     }
-    
+
     if (email.length < CONFIG.MIN_EMAIL_LENGTH) {
       setError("Email address is too short");
       return false;
     }
-    
+
     if (email.length > CONFIG.MAX_EMAIL_LENGTH) {
       setError("Email address is too long");
       return false;
     }
-    
+
     if (!CONFIG.EMAIL_REGEX.test(email)) {
       setError("Please enter a valid email address");
       return false;
     }
-    
+
     return true;
   };
 
@@ -240,7 +241,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
     e: React.FormEvent<HTMLFormElement>
   ): Promise<void> => {
     e.preventDefault();
-    
+
     // Validate email before proceeding
     if (!validateEmail()) {
       return;
@@ -256,24 +257,23 @@ const LoginPage: React.FC<LoginPageProps> = ({
 
       // Success handling
       console.log("OTP sent successfully:", data);
-      
+
       // Show success message
       if (data.message) {
         // You might want to replace alert with a toast notification
         alert(data.message);
       }
-      
+
       // Call success callback if provided
       if (onLoginSuccess) {
         onLoginSuccess(email);
       }
-      
+
       // Navigate to verification page with email parameter
       router.push(`/verify?email=${encodeURIComponent(email)}`);
-      
     } catch (error: unknown) {
       console.error("Login failed:", error);
-      
+
       // Handle different types of errors
       if (error instanceof AxiosError) {
         if (error.response?.status === 429) {
@@ -321,9 +321,11 @@ const LoginPage: React.FC<LoginPageProps> = ({
   // ========================================
   // Render
   // ========================================
-  
+
   return (
-    <div className={`min-h-screen bg-gray-900 flex items-center justify-center p-4 sm:p-6 lg:p-8 ${className}`}>
+    <div
+      className={`min-h-screen bg-gray-900 flex items-center justify-center p-4 sm:p-6 lg:p-8 ${className}`}
+    >
       <div className="max-w-md w-full">
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 sm:p-8 shadow-2xl">
           {/* Header Section */}
@@ -332,7 +334,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
             <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-blue-600 rounded-lg flex items-center justify-center mb-4 sm:mb-6">
               <Mail size={32} className="text-white sm:w-10 sm:h-10" />
             </div>
-            
+
             {/* Title and Description */}
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-3">
               Welcome To ChatApp!
@@ -365,42 +367,75 @@ const LoginPage: React.FC<LoginPageProps> = ({
                   autoComplete="email"
                   autoCapitalize="none"
                   spellCheck="false"
-                  aria-describedby={error ? "email-error" : hasStartedTyping && !isEmailValid ? "email-hint" : undefined}
+                  aria-describedby={
+                    error
+                      ? "email-error"
+                      : hasStartedTyping && !isEmailValid
+                      ? "email-hint"
+                      : undefined
+                  }
                   aria-invalid={error ? "true" : "false"}
                 />
-                
+
                 {/* Validation Icon */}
                 {hasStartedTyping && (
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                     {isEmailValid ? (
                       <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        <svg
+                          className="w-3 h-3 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M5 13l4 4L19 7"
+                          />
                         </svg>
                       </div>
                     ) : email.length > 0 ? (
                       <div className="w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.866-.833-2.536 0L3.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        <svg
+                          className="w-3 h-3 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.866-.833-2.536 0L3.268 16.5c-.77.833.192 2.5 1.732 2.5z"
+                          />
                         </svg>
                       </div>
                     ) : null}
                   </div>
                 )}
               </div>
-              
+
               {/* Validation Hint */}
-              {hasStartedTyping && !isEmailValid && !error && email.length > 0 && (
-                <p id="email-hint" className="mt-1 text-xs text-yellow-400">
-                  Please enter a valid email address
-                </p>
-              )}
+              {hasStartedTyping &&
+                !isEmailValid &&
+                !error &&
+                email.length > 0 && (
+                  <p id="email-hint" className="mt-1 text-xs text-yellow-400">
+                    Please enter a valid email address
+                  </p>
+                )}
             </div>
 
             {/* Error Display */}
             {error && (
               <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-3">
-                <p id="email-error" className="text-red-300 text-sm text-center" role="alert">
+                <p
+                  id="email-error"
+                  className="text-red-300 text-sm text-center"
+                  role="alert"
+                >
                   {error}
                 </p>
               </div>
@@ -431,18 +466,22 @@ const LoginPage: React.FC<LoginPageProps> = ({
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-xs sm:text-sm">
               By continuing, you agree to our{" "}
-              <button 
+              <button
                 type="button"
                 className="text-blue-400 hover:text-blue-300 underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
-                onClick={() => {/* Handle terms click */}}
+                onClick={() => {
+                  /* Handle terms click */
+                }}
               >
                 Terms of Service
-              </button>
-              {" "}and{" "}
-              <button 
+              </button>{" "}
+              and{" "}
+              <button
                 type="button"
                 className="text-blue-400 hover:text-blue-300 underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
-                onClick={() => {/* Handle privacy click */}}
+                onClick={() => {
+                  /* Handle privacy click */
+                }}
               >
                 Privacy Policy
               </button>
