@@ -19,6 +19,8 @@ export interface User {
   name: string;
   /** User's email address */
   email: string;
+  /** User's online status */
+  isOnline: boolean;
 }
 
 /**
@@ -112,29 +114,14 @@ interface AppProviderProps {
  * 
  * @param children - React components to be wrapped by this provider
  * @returns JSX element providing app context to children
- * 
- * @example
- * ```tsx
- * function App() {
- *   return (
- *     <AppProvider>
- *       <Router>
- *         <Routes>
- *           <Route path="/" element={<Dashboard />} />
- *         </Routes>
- *       </Router>
- *     </AppProvider>
- *   );
- * }
- * ```
  */
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // State for storing current user data
   const [user, setUser] = useState<User | null>(null);
   // State for tracking authentication status
   const [isAuth, setIsAuth] = useState<boolean>(false);
-  // State for tracking loading state during API calls
-  const [loading, setLoading] = useState<boolean>(false);
+  // 🔧 FIX: Start with loading=true to prevent premature redirects
+  const [loading, setLoading] = useState<boolean>(true);
   // State for storing chat conversations
   const [chats, setChats] = useState<Chats[] | null>(null);
   // State for storing all users
@@ -148,13 +135,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
    * or missing, it sets the authentication status to false.
    * 
    * @throws Will log error to console if API request fails
-   * 
-   * @example
-   * ```tsx
-   * // Called automatically on app initialization
-   * // Can also be called manually to refresh user data
-   * await refreshUserData();
-   * ```
    */
   const fetchUserData = async (): Promise<void> => {
     try {
@@ -166,7 +146,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         return;
       }
 
-      setLoading(true);
+      // 🔧 FIX: Removed setLoading(true) here since we start with loading=true
       
       // Make API request to get user data using axios for consistency
       const response = await axios.get(`${user_service}/api/v1/me`, {
@@ -176,7 +156,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       });
 
       // Update state with user data and authentication status
-      setUser(response.data);
+      setUser(response.data.user);
       setIsAuth(true);
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -186,6 +166,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       // Remove invalid token
       Cookies.remove("token");
     } finally {
+      // 🔧 FIX: Always set loading to false when auth check is complete
       setLoading(false);
     }
   };
@@ -199,16 +180,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
    * - Setting authentication status to false
    * - Clearing chats and users data
    * - Showing success message
-   * 
-   * @example
-   * ```tsx
-   * const { logoutUser } = useAppData();
-   * 
-   * const handleLogout = async () => {
-   *   await logoutUser();
-   *   navigate('/login');
-   * };
-   * ```
    */
   const logoutUser = async (): Promise<void> => {
     try {
@@ -236,15 +207,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
    * is participating in. It requires a valid authentication token.
    * 
    * @throws Will log error to console if API request fails
-   * 
-   * @example
-   * ```tsx
-   * const { fetchChats } = useAppData();
-   * 
-   * useEffect(() => {
-   *   fetchChats();
-   * }, []);
-   * ```
    */
   const fetchChats = async (): Promise<void> => {
     try {
@@ -276,15 +238,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
    * authentication token.
    * 
    * @throws Will log error to console if API request fails
-   * 
-   * @example
-   * ```tsx
-   * const { fetchUsers, users } = useAppData();
-   * 
-   * useEffect(() => {
-   *   fetchUsers();
-   * }, []);
-   * ```
    */
   const fetchUsers = async (): Promise<void> => {
     try {
@@ -316,13 +269,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Effect hook to fetch initial data on component mount
   useEffect(() => {
     fetchUserData();
-    fetchUsers();
+    // 🔧 FIX: Don't fetch users here, do it after auth is confirmed
   }, []);
 
-  // Effect hook to fetch chats when user becomes authenticated
+  // Effect hook to fetch chats and users when user becomes authenticated
   useEffect(() => {
     if (isAuth) {
       fetchChats();
+      fetchUsers(); // 🔧 FIX: Moved here from mount effect
     } else {
       // Clear chats when user is not authenticated
       setChats(null);
@@ -362,36 +316,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
  * 
  * @throws Error if used outside of AppProvider
  * @returns AppContextType object containing user state and methods
- * 
- * @example
- * ```tsx
- * function Dashboard() {
- *   const { user, isAuth, loading, chats, fetchChats } = useAppData();
- * 
- *   if (loading) return <LoadingSpinner />;
- *   if (!isAuth) return <LoginForm />;
- * 
- *   return (
- *     <div>
- *       <h1>Welcome, {user?.name}!</h1>
- *       <ChatList chats={chats} />
- *     </div>
- *   );
- * }
- * ```
- * 
- * @example
- * ```tsx
- * function LogoutButton() {
- *   const { logoutUser } = useAppData();
- * 
- *   return (
- *     <button onClick={logoutUser}>
- *       Logout
- *     </button>
- *   );
- * }
- * ```
  */
 export const useAppData = (): AppContextType => {
   const context = useContext(AppContext);

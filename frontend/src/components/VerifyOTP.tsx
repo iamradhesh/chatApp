@@ -73,7 +73,7 @@ interface VerifyPageProps {
  * ```tsx
  * // Basic usage
  * <VerifyPage />
- * 
+ *
  * // With custom styling
  * <VerifyPage className="custom-verify-page" />
  * ```
@@ -136,7 +136,7 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
   // ========================================
   // State Management
   // ========================================
-  
+
   /** Loading state for OTP verification process */
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -157,7 +157,7 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
   // ========================================
   // Hooks and Context
   // ========================================
-  
+
   /** Global app context for state management */
   const { setIsAuth, setUser, refreshUserData } = useAppData();
 
@@ -176,14 +176,14 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
   // ========================================
   // Effects
   // ========================================
-  
+
   /**
    * Timer effect for countdown functionality
    * Decrements timer every second when timer > 0
    */
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    
+
     if (timer > 0) {
       interval = setInterval(() => {
         setTimer((prevTimer) => prevTimer - 1);
@@ -217,7 +217,7 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
   // ========================================
   // Event Handlers
   // ========================================
-  
+
   /**
    * Handles input change for OTP fields
    * @param {number} index - Index of the input field (0-5)
@@ -226,14 +226,14 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
   const handleInputChange = (index: number, value: string): void => {
     // Allow only single digit
     if (value.length > 1) return;
-    
+
     // Allow only numeric values
     if (value && !/^\d$/.test(value)) return;
 
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    
+
     // Clear error when user starts typing
     if (error) {
       setError("");
@@ -258,13 +258,13 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
-    
+
     // Handle arrow key navigation
     if (e.key === "ArrowLeft" && index > 0) {
       e.preventDefault();
       inputRefs.current[index - 1]?.focus();
     }
-    
+
     if (e.key === "ArrowRight" && index < CONFIG.OTP_LENGTH - 1) {
       e.preventDefault();
       inputRefs.current[index + 1]?.focus();
@@ -278,15 +278,15 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
   const handlePasteOTP = (e: React.ClipboardEvent<HTMLInputElement>): void => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData("text").trim();
-    
+
     // Validate pasted data
     if (pastedData.length === CONFIG.OTP_LENGTH && /^\d{6}$/.test(pastedData)) {
       const pastedOtp = pastedData.split("");
       setOtp(pastedOtp);
-      
+
       // Focus last input field
       inputRefs.current[CONFIG.OTP_LENGTH - 1]?.focus();
-      
+
       // Clear any existing errors
       if (error) {
         setError("");
@@ -301,11 +301,13 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
    * Handles form submission for OTP verification
    * @param {React.FormEvent<HTMLFormElement>} e - Form submission event
    */
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ): Promise<void> => {
     e.preventDefault();
-    
+
     const otpString = otp.join("");
-    
+
     // Validation
     if (otpString.length < CONFIG.OTP_LENGTH) {
       const errorMsg = "Please enter all 6 digits";
@@ -313,7 +315,7 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
       toast.error(errorMsg);
       return;
     }
-    
+
     if (!email) {
       const errorMsg = "Email address is required";
       setError(errorMsg);
@@ -335,15 +337,11 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
 
       // Success notification
       toast.success(data.message || "Email verified successfully!");
-      
+
       // Store token in cookie if provided
       if (data.token) {
-        const isProduction = process.env.NODE_ENV === 'production';
-        
         Cookies.set("token", data.token, {
           expires: CONFIG.COOKIE_EXPIRY_DAYS,
-          secure: isProduction, // Only secure in production
-          sameSite: 'strict',
           path: "/",
         });
 
@@ -355,40 +353,31 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
         // Set authentication status
         setIsAuth(true);
 
-        // Refresh user data and other context data
-        try {
-          await refreshUserData();
-        } catch (refreshError) {
-          console.error("Error refreshing user data:", refreshError);
-          // Don't fail the whole process if refresh fails
-        }
-
         // Reset form
         setOtp(new Array(CONFIG.OTP_LENGTH).fill(""));
-        
-        // Navigate to dashboard after successful verification
-        toast.loading("Redirecting to dashboard...", { duration: 1000 });
-        
+
+        // 🔧 IMPROVEMENT: Add a small delay to ensure context updates
+        toast.loading("Redirecting to dashboard...", { duration: 1500 });
+
         setTimeout(() => {
-          router.push("/dashboard");
-        }, 1000);
+          router.push("/chat");
+        }, 1500); // Increased delay to ensure context update
       } else {
         throw new Error("No authentication token received");
       }
-      
     } catch (error: unknown) {
       console.error("OTP verification failed:", error);
-      
+
       let errorMessage = "Verification failed. Please try again.";
-      
+
       if (error instanceof AxiosError && error.response?.data) {
         const errorData = error.response.data as ApiError;
         errorMessage = errorData.message || errorMessage;
       }
-      
+
       setError(`Verification failed: ${errorMessage}`);
       toast.error(errorMessage);
-      
+
       // Clear OTP on error for security
       setOtp(new Array(CONFIG.OTP_LENGTH).fill(""));
       inputRefs.current[0]?.focus();
@@ -419,22 +408,21 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
 
       // Success notification
       toast.success(data.message || "Verification code sent successfully!");
-      
+
       // Reset timer and clear OTP
       setTimer(CONFIG.TIMER_DURATION);
       setOtp(new Array(CONFIG.OTP_LENGTH).fill(""));
       inputRefs.current[0]?.focus();
-      
     } catch (error: unknown) {
       console.error("OTP resend failed:", error);
-      
+
       let errorMessage = "Failed to resend code. Please try again.";
-      
+
       if (error instanceof AxiosError && error.response?.data) {
         const errorData = error.response.data as ApiError;
         errorMessage = errorData.message || errorMessage;
       }
-      
+
       setError(`Resend failed: ${errorMessage}`);
       toast.error(errorMessage);
     } finally {
@@ -450,7 +438,9 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
   const formatTimer = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   // Don't render if no email (will redirect)
@@ -461,9 +451,11 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
   // ========================================
   // Render
   // ========================================
-  
+
   return (
-    <div className={`min-h-screen bg-gray-900 flex items-center justify-center p-4 sm:p-6 lg:p-8 ${className}`}>
+    <div
+      className={`min-h-screen bg-gray-900 flex items-center justify-center p-4 sm:p-6 lg:p-8 ${className}`}
+    >
       <div className="max-w-md w-full">
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 sm:p-8 shadow-2xl">
           {/* Header Section */}
@@ -488,7 +480,7 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
               Verify Your Email
             </h1>
             <p className="text-gray-400 text-sm sm:text-base lg:text-lg leading-relaxed">
-              We have sent a 6-digit verification code to {" "} <br />
+              We have sent a 6-digit verification code to <br />
               <span className="font-semibold text-blue-400 break-all">
                 {email}
               </span>
@@ -538,7 +530,11 @@ const VerifyOtp: React.FC<VerifyPageProps> = ({ className = "" }) => {
             <button
               type="submit"
               className="w-full py-3 sm:py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-              disabled={loading || resendLoading || otp.join("").length < CONFIG.OTP_LENGTH}
+              disabled={
+                loading ||
+                resendLoading ||
+                otp.join("").length < CONFIG.OTP_LENGTH
+              }
               aria-label="Verify OTP code"
             >
               {loading ? (
