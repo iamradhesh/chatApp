@@ -24,7 +24,7 @@ export const isAuth = async (
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    console.log("Auth Header:", authHeader);
+    // console.log("Auth Header:", authHeader);
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       res.status(401).json({ message: "Please Login - No Auth Headers" });
       return;
@@ -38,7 +38,7 @@ export const isAuth = async (
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
-    console.log("Decoded JWT:", decoded);
+    
     if (!decoded) {
       res.status(401).json({ message: "Invalid token" });
       return;
@@ -47,7 +47,7 @@ export const isAuth = async (
     // Attach decoded payload to req.user
     req.user = decoded as JwtPayload;
 
-    console.log("Authenticated User ID:", req.user);
+    // console.log("Authenticated User ID:", req.user);
 
     next();
   } catch (error) {

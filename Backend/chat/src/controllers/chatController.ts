@@ -1,4 +1,3 @@
-// This is Chat Controller
 import dotenv from "dotenv";
 import axios from "axios";
 import TryCatch from "../config/TryCatch.js";
@@ -8,46 +7,36 @@ import { Messages } from "../models/Message.js";
 
 dotenv.config();
 
-// Create a new chat
-export const createNewChat = TryCatch(
-  async (req: AuthenticatedRequest, res) => {
-    // Logic for creating a new chat
-    const userId = req.user?.id;
-    console.log("userID:", userId);
-    const { otherUserId } = req.body;
-    if (!otherUserId) {
-      return res.status(400).json({ message: "otherUserId is required" });
-    }
+// Create a new chat or return existing
+export const createNewChat = TryCatch(async (req: AuthenticatedRequest, res) => {
+  const userId = req.user?.id;
+  const { otherUserId } = req.body;
 
-    if (!userId) {
-      res.status(401).json({ message: "User not authenticated" });
-      return;
-    }
+  if (!userId) return res.status(401).json({ message: "User not authenticated" });
+  if (!otherUserId) return res.status(400).json({ message: "otherUserId is required" });
 
-    // Continue with chat creation logic
+  // Check existing chat
+  const existingChat = await Chat.findOne({ users: { $all: [userId, otherUserId] } });
 
-    const existingChat = await Chat.findOne({
-      users: { $all: [userId, otherUserId] },
+  if (existingChat) {
+    return res.status(200).json({
+      message: "Chat already exists",
+      chat: existingChat,
+      chatId: existingChat._id,
     });
-
-    if (existingChat) {
-      return res
-        .status(400)
-        .json({ message: "Chat already exists", chatId: existingChat._id });
-    }
-
-    const newChat = await Chat.create({
-      users: [userId, otherUserId],
-      $size: 2,
-    });
-
-    res
-      .status(201)
-      .json({ message: "Chat created successfully", chat: newChat });
   }
-);
 
-//Fetch all chats for a user
+  // Create new chat
+  const newChat = await Chat.create({ users: [userId, otherUserId] });
+
+  return res.status(201).json({
+    message: "Chat created successfully",
+    chat: newChat,
+    chatId: newChat._id,
+  });
+});
+
+// Fetch all chats for a user
 export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
   const userId = req.user?.id;
 
@@ -58,10 +47,10 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
   }
 
   const chats = await Chat.find({ users: userId }).sort({ updatedAt: -1 });
-  //   console.log("CChats:", chats);
+  
   const chatWithUserData = await Promise.all(
     chats.map(async (chat) => {
-      const otherUserId = chat.users.find((id) => id !== userId);
+      const otherUserId = chat.users.find((id) => id.toString() !== userId.toString());
 
       const unseenCount = await Messages.countDocuments({
         chatId: chat._id,
@@ -69,17 +58,33 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
         sender: { $ne: userId },
       });
 
+      // ✅ If latestMessage is empty, get it from Messages collection
+      let latestMessage = chat.latestMessage;
+      
+      if (!latestMessage?.text) {
+        const lastMsg = await Messages.findOne({ chatId: chat._id })
+          .sort({ createdAt: -1 })
+          .limit(1);
+        
+        if (lastMsg) {
+          latestMessage = {
+            text: lastMsg.image ? "📷 Image" : (lastMsg.text || ""),
+            sender: lastMsg.sender,
+          };
+        }
+      }
+
       try {
         const { data } = await axios.get(
           `${process.env.USER_SERVICE}/api/v1/user/${otherUserId}`,
-          { timeout: 3000 } // timeout so it doesn't hang forever
+          { timeout: 3000 }
         );
 
         return {
-          user: data.user, // ✅ use data.user instead of data
+          user: data.user,
           chat: {
             ...chat.toObject(),
-            latestMessage: chat.latestMessage || null,
+            latestMessage: latestMessage || null,
             unseenCount,
           },
         };
@@ -93,7 +98,7 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
           user: { _id: otherUserId, name: "Unknown", avatar: "default.jpg" },
           chat: {
             ...chat.toObject(),
-            latestMessage: chat.latestMessage || null,
+            latestMessage: latestMessage || null,
             unseenCount,
           },
         };
@@ -104,8 +109,7 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
   res.status(200).json({ chats: chatWithUserData });
 });
 
-//Send Message
-
+// Send Message
 export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
   const senderId = req.user?.id;
   const imageFile = req.file;
@@ -142,7 +146,7 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
   // Build message data
   const messageData = {
     chatId,
-    sender: senderId, // matches schema
+    sender: senderId,
     text: text || undefined,
     image: imageFile
       ? { url: imageFile.path, publicId: imageFile.filename }
@@ -156,19 +160,24 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
   const message = new Messages(messageData);
   const savedMessage = await message.save();
 
-  // Update latest message in chat
+  // ✅ Update latest message in chat BEFORE sending response
   const latestMessageText = imageFile
-    ? savedMessage.image?.url || "📷 Image"
-    : savedMessage.text;
+    ? "📷 Image"
+    : (text || "Message");
+  
   await Chat.findByIdAndUpdate(
     chatId,
     {
-      latestMessage: { text: latestMessageText, sender: senderId },
+      latestMessage: {
+        text: latestMessageText,
+        sender: senderId,
+      },
       updatedAt: new Date(),
     },
     { new: true }
   );
 
+  // ✅ Send response AFTER updating chat
   res.status(201).json({
     message: "Message created successfully",
     data: savedMessage,
@@ -176,8 +185,7 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
   });
 });
 
-//Get Message By Chat
-
+// Get Messages By Chat
 export const getMessagesByChat = TryCatch(
   async (req: AuthenticatedRequest, res) => {
     const { chatId } = req.params;
@@ -196,16 +204,20 @@ export const getMessagesByChat = TryCatch(
     if (!userId) {
       return res.status(401).json({ message: "User not authenticated" });
     }
+    
+    // ✅ Fixed: Compare correctly
     const isUserInChat = chat.users.some(
-      (userId) => userId.toString() === userId.toString()
+      (id) => id.toString() === userId.toString()
     );
+    
     if (!isUserInChat) {
       return res
         .status(403)
         .json({ message: "User not authorized to access this chat" });
     }
 
-    const messagesToMarkSeen = await Messages.updateMany(
+    // Mark messages as seen
+    await Messages.updateMany(
       {
         chatId,
         seen: false,
@@ -216,6 +228,7 @@ export const getMessagesByChat = TryCatch(
         seenAt: new Date(),
       }
     );
+    
     const messages = await Messages.find({ chatId }).sort({ createdAt: 1 });
 
     const otherUserId = chat.users.find((id) => id.toString() !== userId?.toString());
@@ -225,18 +238,23 @@ export const getMessagesByChat = TryCatch(
     }
 
     try {
-      const {data} = await axios.get(`${process.env.USER_SERVICE}/api/v1/user/${otherUserId}`, { timeout: 3000 });
+      const { data } = await axios.get(
+        `${process.env.USER_SERVICE}/api/v1/user/${otherUserId}`,
+        { timeout: 3000 }
+      );
 
-      if(!data) {
+      if (!data) {
         return res.status(404).json({ message: "User not found" });
       }
-      //Socket Work
+      
       res.status(200).json({ messages, user: data });
-
       
     } catch (error) {
       console.error("Error fetching other user data:", error);
-      res.status(500).json({ message: "Internal server error", user: otherUserId ,name:"Unknown" });
+      res.status(500).json({ 
+        message: "Internal server error", 
+        user: { _id: otherUserId, name: "Unknown" }
+      });
     }
   }
 );
