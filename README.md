@@ -304,6 +304,3 @@ If you have any questions or need help with setup, feel free to:
 ⭐ Star this repository if you found it helpful!
 Built with ❤️ by Radhesh
 
-⭐ **Star this repository** if you found it helpful!
-
-**Built with ❤️ by [Your Name]**
