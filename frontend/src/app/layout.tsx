@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
+import { SocketProvider } from "@/context/SocketContext";
 
 
 
@@ -19,7 +20,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AppProvider>
-          {children}
+          <SocketProvider>
+            {children}
+          </SocketProvider>
         </AppProvider>
       </body>
     </html>

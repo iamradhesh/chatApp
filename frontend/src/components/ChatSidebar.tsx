@@ -23,6 +23,8 @@ interface ChatSidebarProps {
   selectedUser?: string | null;
   setSelectedUser?: (userId: string | null) => void;
   handleLogout?: () => void;
+  createChat?: (u: User) => Promise<void>;
+  onChatSelect: (chatId: string, user: User) => void;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -36,8 +38,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   selectedUser,
   setSelectedUser,
   handleLogout,
+  createChat,
+  onChatSelect,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState<string>("");
+  const [chatList, setChatList] = React.useState(chats || []);
+
+  React.useEffect(() => {
+    if (chats) setChatList(chats);
+  }, [chats]);
 
   users?.forEach((user) => (user.isOnline = true));
 
@@ -45,9 +54,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     if (setShowAllUser) setShowAllUser((prev) => !prev);
   };
 
+  // ✅ Filter out logged-in user
+  const filteredUsers = users?.filter(
+    (u) => u._id !== loggedInUser?._id
+  );
+
   return (
     <aside
-      className={`fixed top-0 left-0 z-20 h-screen w-full sm:w-80 bg-gray-900 border-r border-gray-700 transform
+      className={`chatSideBarClass fixed top-0 left-0 z-20 h-screen w-full sm:w-80 bg-gray-900 border-r border-gray-700 transform
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         sm:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col`}
     >
@@ -106,27 +120,28 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
             {/* Users list */}
             <div className="space-y-2 overflow-y-auto h-full pb-4">
-              {!users ? (
+              {!filteredUsers ? (
                 <div className="text-gray-400 text-center mt-4">
                   Loading users...
                 </div>
-              ) : users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <div className="text-gray-400 text-center mt-4">
                   No users found
                 </div>
               ) : (
-                users
-                  .filter(
-                    (u) =>
-                      u._id !== loggedInUser?._id &&
-                      u.name
-                        .toLowerCase()
-                        .includes(searchQuery.toLowerCase())
+                filteredUsers
+                  .filter((u) =>
+                    u.name.toLowerCase().includes(searchQuery.toLowerCase())
                   )
                   .map((user) => (
                     <button
                       key={user._id}
-                      onClick={() => setSelectedUser?.(user._id)}
+                      onClick={async () => {
+                        setSelectedUser?.(user._id);
+                        await createChat?.(user);
+                        onChatSelect("", user);
+                        setSidebarOpen(false);
+                      }}
                       className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${
                         selectedUser === user._id
                           ? "bg-blue-700"
@@ -152,9 +167,9 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               )}
             </div>
           </div>
-        ) : chats && chats.length > 0 ? (
+        ) : chatList && chatList.length > 0 ? (
           <div className="space-y-2 overflow-y-auto h-full pb-4">
-            {chats.map((chatObj, idx) => {
+            {chatList.map((chatObj, idx) => {
               const { chat } = chatObj;
               const otherUser = chatObj.user;
               if (!otherUser || otherUser._id === loggedInUser?._id) return null;
@@ -167,14 +182,24 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               return (
                 <button
                   key={chat._id || idx}
-                  onClick={() => setSelectedUser?.(otherUser._id)}
+                  onClick={() => {
+                    setSelectedUser?.(otherUser._id);
+                    onChatSelect(chat._id, otherUser);
+                    setChatList((prevChats) => {
+                      const clicked = prevChats.find(
+                        (c) => c.user._id === otherUser._id
+                      );
+                      if (!clicked) return prevChats;
+                      const remaining = prevChats.filter(
+                        (c) => c.user._id !== otherUser._id
+                      );
+                      return [clicked, ...remaining];
+                    });
+                  }}
                   className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${
-                    isSelected
-                      ? "bg-blue-700"
-                      : "bg-gray-800 hover:bg-gray-700"
+                    isSelected ? "bg-blue-700" : "bg-gray-800 hover:bg-gray-700"
                   }`}
                 >
-                  {/* Avatar */}
                   <div className="relative">
                     <UserCircle className="w-10 h-10 text-gray-300" />
                     {otherUser.isOnline && (
@@ -182,7 +207,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     )}
                   </div>
 
-                  {/* User and last message */}
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-white truncate">
                       {otherUser.name || "Unknown User"}
@@ -196,7 +220,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     </div>
                   </div>
 
-                  {/* Unseen message badge */}
                   {unseenCount > 0 && (
                     <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">
                       {unseenCount}
@@ -207,26 +230,23 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             })}
           </div>
         ) : (
+          
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
-            <div className="p-4 bg-gray-400 rounded-full mb-4">
-              <MessageCircleIcon className="w-12 h-12 text-gray-900" />
+            <div className="p-4 bg-gray-800 rounded-full mb-3">
+              <MessageCircleIcon className="w-12 h-12 text-gray-400" />
             </div>
-            <div className="text-center px-4">
-              <h3 className="text-lg font-semibold mb-2">No Chats Yet</h3>
-              <p className="text-sm">
-                Start a new conversation by clicking the{" "}
-                <Plus
-                  size={11}
-                  className="inline-block mr-1 text-green-400"
-                />
-                button above.
-              </p>
-            </div>
+            <h3 className="text-lg font-semibold mb-1 text-white">
+              No Chats Yet
+            </h3>
+            <p className="text-sm text-center text-gray-400">
+              Start a conversation by clicking{" "}
+              <Plus size={14} className="inline text-green-400" /> above.
+            </p>
           </div>
         )}
       </div>
 
-      {/* Footer: Profile + Logout */}
+      {/* Footer */}
       <footer className="p-4 border-t border-gray-700 space-y-2">
         <Link
           href={"/profile"}
@@ -236,7 +256,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </Link>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-red-400 hover:bg-red-700 hover:cursor-pointer text-white transition-colors"
         >
           <LogOut className="w-5 h-5" /> Logout
         </button>
