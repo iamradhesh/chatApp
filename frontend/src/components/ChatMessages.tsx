@@ -101,16 +101,17 @@ const ChatMessages = ({
                           {msg.text}
                         </p>
                       )}
-                      
+
+                     
+
                       {/* Timestamp and status */}
                       <div
                         className={`flex items-center gap-1.5 mt-1 text-xs ${
                           isSentByMe ? "justify-end text-blue-200" : "text-gray-400"
                         }`}
                       >
-                        <span>{moment(msg.createdAt).format("hh:mm A")}</span>
-                        
-                        {isSentByMe && (
+                         {/* Read receipt */}
+                      {isSentByMe && (
                           <span className="inline-flex">
                             {msg.seen ? (
                               <CheckCheck className="w-4 h-4" strokeWidth={2} />
@@ -119,6 +120,21 @@ const ChatMessages = ({
                             )}
                           </span>
                         )}
+                        {/* time based on seen and created */}
+                        <span>
+                          {msg.seen
+                            ? moment(msg.seenAt).format("hh:mm A")
+                            : moment(msg.createdAt).format("hh:mm A")}
+                        </span>
+
+                        
+                        {/* date based on seen and created */}
+                        <span>
+                          {msg.seen
+                            ? moment(msg.seenAt).format("MMM D, YYYY")
+                            : moment(msg.createdAt).format("MMM D, YYYY")}
+                        </span>
+
                       </div>
                     </div>
                   </div>

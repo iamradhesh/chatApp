@@ -25,6 +25,7 @@ interface ChatSidebarProps {
   handleLogout?: () => void;
   createChat?: (u: User) => Promise<void>;
   onChatSelect: (chatId: string, user: User) => void;
+  onlineUsers: string[]
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -40,6 +41,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   handleLogout,
   createChat,
   onChatSelect,
+  onlineUsers
 }) => {
   const [searchQuery, setSearchQuery] = React.useState<string>("");
   const [chatList, setChatList] = React.useState(chats || []);
@@ -85,11 +87,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           </h2>
 
           <button
-            className={`p-2.5 rounded-lg transition-colors flex-shrink-0 ${
-              showAllUser
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-green-600 hover:bg-green-700"
-            } text-white`}
+            className={`p-2.5 rounded-lg transition-colors flex-shrink-0 ${showAllUser
+              ? "bg-red-600 hover:bg-red-700"
+              : "bg-green-600 hover:bg-green-700"
+              } text-white`}
             onClick={handleToggle}
           >
             {showAllUser ? (
@@ -142,24 +143,30 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         onChatSelect("", user);
                         setSidebarOpen(false);
                       }}
-                      className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${
-                        selectedUser === user._id
-                          ? "bg-blue-700"
-                          : "bg-gray-800 hover:bg-gray-700"
-                      }`}
+                      className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${selectedUser === user._id
+                        ? "bg-blue-700"
+                        : "bg-gray-800 hover:bg-gray-700"
+                        }`}
                     >
                       <div className="relative">
                         <UserCircle className="w-10 h-10 text-gray-300" />
-                        {user.isOnline && (
+                        {onlineUsers.includes(user._id) && (
                           <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></span>
                         )}
+                        {
+                          !onlineUsers.includes(user._id) && (
+                            <span className='bg-red-500 border-2 border-gray-800 absolute bottom-0 right-0 w-3 h-3 rounded-full '>
+
+                            </span>
+                          )
+                        }
                       </div>
                       <div className="relative flex-1 min-w-0">
                         <span className="font-medium text-white truncate block">
                           {user.name}
                         </span>
                         <div className="text-xs text-gray-400 mt-0.5">
-                          {user.isOnline ? "Online" : "Offline"}
+                          {onlineUsers.includes(user._id) ? "Online" : "Offline"}
                         </div>
                       </div>
                     </button>
@@ -196,15 +203,21 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       return [clicked, ...remaining];
                     });
                   }}
-                  className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${
-                    isSelected ? "bg-blue-700" : "bg-gray-800 hover:bg-gray-700"
-                  }`}
+                  className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${isSelected ? "bg-blue-700" : "bg-gray-800 hover:bg-gray-700"
+                    }`}
                 >
                   <div className="relative">
                     <UserCircle className="w-10 h-10 text-gray-300" />
-                    {otherUser.isOnline && (
+                    {onlineUsers.includes(otherUser._id) && (
                       <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></span>
                     )}
+                    {
+                      !onlineUsers.includes(otherUser._id) && (
+                        <span className='bg-red-500 border-2 border-gray-800 absolute bottom-0 right-0 w-3 h-3 rounded-full '>
+
+                        </span>
+                      )
+                    }
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -230,7 +243,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             })}
           </div>
         ) : (
-          
+
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
             <div className="p-4 bg-gray-800 rounded-full mb-3">
               <MessageCircleIcon className="w-12 h-12 text-gray-400" />

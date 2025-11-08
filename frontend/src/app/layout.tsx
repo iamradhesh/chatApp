@@ -3,8 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
 import { SocketProvider } from "@/context/SocketContext";
-
-
+import { Toaster } from "react-hot-toast"; // ✅ Import Toaster
 
 export const metadata: Metadata = {
   title: "Chat App",
@@ -18,10 +17,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className="bg-gray-900 text-white">
         <AppProvider>
           <SocketProvider>
             {children}
+            {/* ✅ Add global toast container */}
+            <Toaster position="top-center" reverseOrder={false} />
           </SocketProvider>
         </AppProvider>
       </body>

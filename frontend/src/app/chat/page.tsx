@@ -9,7 +9,8 @@ import axios from "axios";
 import ChatHeader from "@/components/ChatHeader";
 import ChatMessages from "@/components/ChatMessages";
 import MessageInput from "@/components/MessageInput";
-import { Camera, CameraIcon } from "lucide-react";
+import { Camera, CameraIcon, Divide } from "lucide-react";
+import { SocketData } from "@/context/SocketContext";
 
 export interface Message {
   _id: string;
@@ -36,8 +37,8 @@ const ChatApp: React.FC = () => {
     users,
     fetchChats,
   } = useAppData();
-
   const router = useRouter();
+  const { onlineUsers, socket } = SocketData();
 
   // 🔹 States
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -48,6 +49,7 @@ const ChatApp: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [showAllUser, setShowAllUser] = useState<boolean>(false);
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [typingTimeOut, setTypingTimeOut] = useState<NodeJS.Timeout | null>(null);
 
   // 🔹 Redirect if not authenticated
   useEffect(() => {
@@ -82,8 +84,6 @@ const ChatApp: React.FC = () => {
         setReceiverUser(u);
         setShowAllUser(false);
         await fetchChats();
-
-        // Fetch messages for the new/existing chat
         fetchMessagesForChat(chatId);
       } else {
         toast.error("Chat ID not found in response");
@@ -109,16 +109,10 @@ const ChatApp: React.FC = () => {
       );
       setMessages(data.messages || []);
     } catch (err: any) {
-      console.error(
-        "Error fetching messages:",
-        err.response?.data || err.message
-      );
-
-      // Only show error if it's not a "Chat not found" error
+      console.error("Error fetching messages:", err.response?.data || err.message);
       if (err.response?.status !== 404) {
         toast.error("Failed to load messages");
       } else {
-        // If chat not found, initialize with empty messages
         setMessages([]);
       }
     }
@@ -131,7 +125,6 @@ const ChatApp: React.FC = () => {
     setReceiverUser(user);
     setSidebarOpen(false);
 
-    // Fetch messages if chatId exists
     if (chatId) {
       fetchMessagesForChat(chatId);
     }
@@ -144,83 +137,225 @@ const ChatApp: React.FC = () => {
     }
   }, [selectedChatId]);
 
-  
- // 🔹 Send message
-const handleMessageSend = async (e: React.FormEvent<HTMLFormElement>, imageFile?: File | null) => {
-  e.preventDefault();
-  if (!message.trim() && !imageFile) return;
-  if (!selectedChatId) {
-    toast.error("No chat selected");
-    return;
-  }
-
-  const token = Cookies.get("token");
-  try {
-    const formData = new FormData();
-    formData.append("chatId", selectedChatId);
-    if (message.trim()) formData.append("text", message);
-    if (imageFile) formData.append("image", imageFile);
-
-    const { data } = await axios.post(
-      `${chat_service}/api/v1/message`,
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-    
-    // ✅ CORRECTED: Based on your API structure, the message is in data.data
-    // Your API returns: { message: "success message", data: { actual message object } }
-    const newMessage = data.data;
-    
-    if (!newMessage || !newMessage._id) {
-      console.error("Invalid message response:", data);
-      toast.error("Failed to send message");
+  // 🔹 Send message
+  const handleMessageSend = async (
+    e: React.FormEvent<HTMLFormElement>,
+    imageFile?: File | null
+  ) => {
+    e.preventDefault();
+    if (!message.trim() && !imageFile) return;
+    if (!selectedChatId) {
+      toast.error("No chat selected");
       return;
     }
-    
-    console.log("New message sent:", newMessage); // Debug log
-    
-    // ✅ Optimistically add message to UI immediately
-    setMessages((prev) => {
-      const currentMessages = prev ? [...prev] : [];
-      
-      // Check if message already exists (avoid duplicates)
-      const messageExists = currentMessages.some(
-        (msg) => msg._id === newMessage._id
-      );
-      
-      if (!messageExists) {
-        return [...currentMessages, newMessage];
-      }
-      return currentMessages;
-    });
-    
-    // Clear input
-    setMessage("");
 
-    // ✅ Update sidebar to show latest message
-    await fetchChats();
-    
-  } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      console.error("Send message error:", error.response?.data || error.message);
-      toast.error(error.response?.data?.message || "Message send failed");
-    } else {
-      console.error("Send message error:", error);
-      toast.error("Message send failed");
+    const token = Cookies.get("token");
+
+    if (typingTimeOut) {
+      clearTimeout(typingTimeOut);
+      setTypingTimeOut(null);
     }
-  }
-};
+
+    // ✅ FIX: Use selectedChatId instead of selectedUserId
+    socket?.emit("stopTyping", {
+      chatId: selectedChatId,
+      userId: loggedInUser?.id,
+    });
+    setIsTyping(false);
+
+    try {
+      const formData = new FormData();
+      formData.append("chatId", selectedChatId);
+      if (message.trim()) formData.append("text", message);
+      if (imageFile) formData.append("image", imageFile);
+
+      const { data } = await axios.post(
+        `${chat_service}/api/v1/message`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const newMessage = data.data;
+      if (!newMessage || !newMessage._id) {
+        console.error("Invalid message response:", data);
+        toast.error("Failed to send message");
+        return;
+      }
+
+      console.log("New message sent:", newMessage);
+
+      // ✅ Optimistically add message to UI
+      setMessages((prev) => {
+        const currentMessages = prev ? [...prev] : [];
+        const messageExists = currentMessages.some(
+          (msg) => msg._id === newMessage._id
+        );
+        if (!messageExists) {
+          return [...currentMessages, newMessage];
+        }
+        return currentMessages;
+      });
+
+      setMessage("");
+      await fetchChats();
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        console.error("Send message error:", error.response?.data || error.message);
+        toast.error(error.response?.data?.message || "Message send failed");
+      } else {
+        console.error("Send message error:", error);
+        toast.error("Message send failed");
+      }
+    }
+  };
 
   const handleTyping = (value: string) => {
     setMessage(value);
-    if (!selectedChatId) return;
-    // Socket events can be added here later
+    if (!selectedChatId || !socket) return;
+
+    // ✅ FIX: Use selectedChatId instead of selectedUserId
+    if (value.trim()) {
+      socket.emit("typing", {
+        chatId: selectedChatId,
+        userId: loggedInUser?.id,
+      });
+    }
+
+    if (typingTimeOut) {
+      clearTimeout(typingTimeOut);
+    }
+
+    const timeout = setTimeout(() => {
+      socket.emit("stopTyping", {
+        chatId: selectedChatId,
+        userId: loggedInUser?.id,
+      });
+      setIsTyping(false);
+    }, 3000);
+
+    setTypingTimeOut(timeout);
   };
+
+  // ✅ FIX: Listen for typing events with correct chatId
+  useEffect(() => {
+    if (!socket || !selectedChatId) return;
+
+    const handleUserTyping = (data: { chatId: string; userId: string }) => {
+      console.log("received user typing", data);
+      if (data.chatId === selectedChatId && data.userId !== loggedInUser?.id) {
+        setIsTyping(true);
+      }
+    };
+
+    const handleUserStoppedTyping = (data: { chatId: string; userId: string }) => {
+      console.log("received user stopped typing", data);
+      if (data.chatId === selectedChatId && data.userId !== loggedInUser?.id) {
+        setIsTyping(false);
+      }
+    };
+
+    socket.on("userTyping", handleUserTyping);
+    socket.on("userStoppedTyping", handleUserStoppedTyping);
+
+    return () => {
+      socket?.off("newMessage");
+      socket.off("userTyping", handleUserTyping);
+      socket.off("userStoppedTyping", handleUserStoppedTyping);
+    };
+  }, [socket, selectedChatId, loggedInUser?.id]);
+
+  // ✅ NEW: Listen for incoming messages in real-time
+  useEffect(() => {
+    if (!socket || !selectedChatId) return;
+
+    const handleNewMessage = (newMessage: Message) => {
+      console.log("📩 Received new message via socket:", newMessage);
+      
+      // Only add message if it belongs to current chat
+      if (newMessage.chatId === selectedChatId) {
+        setMessages((prev) => {
+          const currentMessages = prev ? [...prev] : [];
+          // Avoid duplicates
+          const messageExists = currentMessages.some(
+            (msg) => msg._id === newMessage._id
+          );
+          if (!messageExists) {
+            return [...currentMessages, newMessage];
+          }
+          return currentMessages;
+        });
+      }
+      
+      // Update sidebar for all incoming messages
+      fetchChats();
+    };
+
+    socket.on("newMessage", handleNewMessage);
+
+    return () => {
+      socket.off("newMessage", handleNewMessage);
+    };
+  }, [socket, selectedChatId]);
+
+
+   // ✅ Listen for seen event from backend
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMessagesSeen = ({
+      chatId,
+      messageIds,
+      seenBy,
+    }: {
+      chatId: string;
+      messageIds: string[];
+      seenBy: string;
+    }) => {
+      if (chatId === selectedChatId) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            messageIds.includes(msg._id)
+              ? { ...msg, seen: true, seenAt: new Date().toISOString() }
+              : msg
+          )
+        );
+      }
+    };
+
+    socket.on("messagesSeen", handleMessagesSeen);
+
+    return () => {
+      socket.off("messagesSeen", handleMessagesSeen);
+    };
+  }, [socket, selectedChatId]);
+
+  // ✅ FIX: Join chat room when selecting a chat
+  useEffect(() => {
+    if (selectedChatId && socket) {
+      fetchChats();
+      setIsTyping(false);
+      socket.emit("joinChat", selectedChatId); // Use chatId not userId
+
+      return () => {
+        socket.emit("leaveChat", selectedChatId);
+        setMessages(null);
+      };
+    }
+  }, [selectedChatId, socket]);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeOut) {
+        clearTimeout(typingTimeOut);
+        setTypingTimeOut(null);
+      }
+    };
+  }, [typingTimeOut]);
 
   // 🔹 Loader
   if (loading) {
@@ -247,24 +382,35 @@ const handleMessageSend = async (e: React.FormEvent<HTMLFormElement>, imageFile?
         handleLogout={handleLogout}
         createChat={createChat}
         onChatSelect={handleChatSelect}
+        onlineUsers={onlineUsers}
       />
-
       <div className="flex-1 flex flex-col p-4 backdrop-blur-xl bg-white/5 border-white/10 sm:ml-80 overflow-hidden">
         <ChatHeader
           setSidebarOpen={setSidebarOpen}
           user={selectedChatId ? receiverUser : null}
           isTyping={isTyping}
+          onlineUsers={onlineUsers}
         />
-
         <ChatMessages
           selectedUser={selectedUserId}
           messages={messages}
           loggedInUser={loggedInUser}
         />
-        <MessageInput handleMessageSend={handleMessageSend} setMessage={handleTyping} selectedUser = {selectedUserId} message = {message}  />
+        <MessageInput
+          handleMessageSend={handleMessageSend}
+          setMessage={handleTyping}
+          selectedUser={selectedUserId}
+          message={message}
+          chatId={selectedChatId}
+          socket={socket}
+        />
       </div>
-    </div>
-  ) : null;
+    </div> 
+  ) : <div>
+    <div className="flex items-center justify-center flex-1">
+          <p>Select a chat to start messaging</p>
+        </div>
+  </div>;
 };
 
 export default ChatApp;
