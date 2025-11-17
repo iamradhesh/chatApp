@@ -281,7 +281,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
         } else if (error.response?.status === 400) {
           const errorData = error.response.data as ApiError;
           setError(errorData.message || "Invalid email address");
-        } else if (error.response?.status >= 500) {
+        } else if (error.response?.status !== undefined && error.response.status >= 500) {
           setError("Server error. Please try again later.");
         } else if (error.response?.data) {
           const errorData = error.response.data as ApiError;

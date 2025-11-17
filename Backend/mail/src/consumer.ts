@@ -11,7 +11,7 @@ export const startSendOTPConsumer = async () => {
     const connection = await ampq.connect({
       protocol: "amqp",
       hostname: process.env.RABBITMQ_HOST,
-      port: process.env.RABBITMQ_PORT,
+      port: process.env.RABBITMQ_PORT ? parseInt(process.env.RABBITMQ_PORT) : undefined,
       username: process.env.RABBITMQ_USER,
       password: process.env.RABBITMQ_PASS,
     });
@@ -30,11 +30,11 @@ export const startSendOTPConsumer = async () => {
           const { to, subject, body } = JSON.parse(msg.content.toString());
 
           const transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: process.env.SMTP_PORT,
+            host: process.env.SMTP_HOST ? process.env.SMTP_HOST : undefined,
+            port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : undefined,
             auth: {
-              user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASS,
+              user: process.env.SMTP_USER ? process.env.SMTP_USER : undefined,
+              pass: process.env.SMTP_PASS ? process.env.SMTP_PASS : undefined,
             },
           });
 

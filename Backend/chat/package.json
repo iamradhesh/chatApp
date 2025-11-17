@@ -33,7 +33,10 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mongoose": "^5.11.97",
     "@types/multer": "^2.0.0",
+    "@types/node": "^24.10.1",
     "@types/socket.io": "^3.0.2",
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }
